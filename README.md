@@ -54,6 +54,16 @@ The seed command creates only deterministic synthetic identities
 `demo-provider` and `demo-customer`, one service, and two future slots. It does
 not create real contacts or credentials.
 
+For a local Swagger demonstration, choose a temporary synthetic password and
+pass it explicitly to the seed command:
+
+```bash
+python manage.py seed_demo --password 'choose-a-local-demo-password'
+```
+
+The option changes only the local synthetic users and does not create public
+demo credentials. Do not use a real password.
+
 ## Local API acceptance
 
 Run the complete local checks with the explicit SQLite fallback:

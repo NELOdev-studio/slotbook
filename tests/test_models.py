@@ -178,3 +178,11 @@ def test_seed_command_is_reproducible():
     ) == first_slots
     assert User.objects.filter(username__startswith="demo-").count() == 2
     assert TimeSlot.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_seed_command_can_configure_local_synthetic_demo_password():
+    management.call_command("seed_demo", password="local-demo-password", verbosity=0)
+
+    assert User.objects.get(username="demo-provider").check_password("local-demo-password")
+    assert User.objects.get(username="demo-customer").check_password("local-demo-password")

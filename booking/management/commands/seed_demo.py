@@ -16,9 +16,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Delete the existing synthetic dataset before recreating it.",
         )
+        parser.add_argument(
+            "--password",
+            help="Set a local synthetic password for both demo users; never use a real credential.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
+        password = options["password"]
+        if password is not None and not password:
+            raise CommandError("The synthetic demo password must not be empty.")
+
         if options["reset"]:
             Booking.objects.filter(customer__username__startswith="demo-").delete()
             TimeSlot.objects.filter(service__owner__username="demo-provider").delete()
@@ -32,22 +40,24 @@ class Command(BaseCommand):
                 role=User.Role.PROVIDER,
                 timezone="Europe/Tallinn",
             )
-            provider.set_unusable_password()
-            provider.save()
         if provider.role != User.Role.PROVIDER or provider.timezone != "Europe/Tallinn":
             raise CommandError("Existing demo-provider has incompatible immutable identity.")
-        provider.set_unusable_password()
-        provider.save(update_fields=["password", "last_login"])
+        if password is None:
+            provider.set_unusable_password()
+        else:
+            provider.set_password(password)
+        provider.save()
 
         customer = User.objects.filter(username="demo-customer").first()
         if customer is None:
             customer = User(username="demo-customer", role=User.Role.CUSTOMER)
-            customer.set_unusable_password()
-            customer.save()
         if customer.role != User.Role.CUSTOMER:
             raise CommandError("Existing demo-customer has incompatible immutable identity.")
-        customer.set_unusable_password()
-        customer.save(update_fields=["password", "last_login"])
+        if password is None:
+            customer.set_unusable_password()
+        else:
+            customer.set_password(password)
+        customer.save()
 
         service, _ = Service.objects.get_or_create(
             owner=provider,
