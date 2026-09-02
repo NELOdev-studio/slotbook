@@ -1,0 +1,7 @@
+Django==5.2.17
+djangorestframework==3.17.2
+djangorestframework-simplejwt==5.5.1
+drf-spectacular==0.30.0
+psycopg[binary]==3.3.5
+pytest==9.1.1
+pytest-django==4.14.0
