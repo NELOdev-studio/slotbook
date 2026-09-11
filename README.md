@@ -1,5 +1,7 @@
 # SlotBook
 
+[![CI](https://github.com/NELOdev-studio/slotbook/actions/workflows/ci.yml/badge.svg)](https://github.com/NELOdev-studio/slotbook/actions/workflows/ci.yml)
+
 SlotBook is an API-only demonstrator for appointment and service-slot booking.
 
 ## Status
