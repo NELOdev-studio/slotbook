@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sqlite-baseline:
+    name: Fast checks (SQLite)
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SECRET_KEY: local-validation-secret-key-32bytes
+      SLOTBOOK_TEST_DB: sqlite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Django system checks
+        run: python manage.py check
+      - name: Migrations are complete
+        run: python manage.py makemigrations --check --dry-run
+      - name: Apply migrations (SQLite fallback)
+        run: python manage.py migrate --noinput
+      - name: Fast test suite (SQLite)
+        run: python -m pytest -q -m "not postgres_contention"
+
+  postgres-suite:
+    name: Full suite (PostgreSQL 18)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: slotbook
+          POSTGRES_USER: slotbook
+          POSTGRES_PASSWORD: slotbook-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U slotbook -d slotbook"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: local-validation-secret-key-32bytes
+      DB_NAME: slotbook
+      DB_USER: slotbook
+      DB_PASSWORD: slotbook-ci
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Apply migrations (PostgreSQL)
+        run: python manage.py migrate --noinput
+      - name: Full test suite including PostgreSQL contention
+        run: python -m pytest -q
+
+  docker-build:
+    name: Docker image build (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Docker image
+        run: docker build -t slotbook:ci .
+      - name: Validate compose configuration
+        run: |
+          printf 'DJANGO_SECRET_KEY=ci-placeholder-secret\nDB_PASSWORD=ci-placeholder-password\n' > .env
+          docker compose config --quiet
+          rm .env

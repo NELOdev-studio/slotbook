@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.sqlite3
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.DS_Store
+.git/
+.gitignore
+.vscode/
+__pycache__/
+.pytest_cache/
+# tests/ is intentionally included for the containerized test path
+Dockerfile
+compose.yaml
+.dockerignore
+README.md

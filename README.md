@@ -92,6 +92,49 @@ curl -fsS http://127.0.0.1:8000/api/schema/
 `{"status":"not_ready"}` and is intended for the local interface. It does not
 require JWT authentication and never returns database diagnostics or secrets.
 
+## Docker quickstart
+
+A local Docker/PostgreSQL contour reproduces the same demonstrator in
+containers. Docker and Docker Compose are required; no cloud resources,
+deployment, or external services are involved.
+
+```bash
+cp .env.example .env
+# Edit .env: set DJANGO_SECRET_KEY and DB_PASSWORD to local placeholder values.
+docker compose up -d --build
+docker compose exec app python manage.py migrate --noinput
+docker compose exec app python manage.py seed_demo --password 'choose-a-local-demo-password'
+# Open http://127.0.0.1:8000/api/docs/ in a browser.
+```
+
+The app container serves the API with Gunicorn on `127.0.0.1:8000` as a
+non-root user. The PostgreSQL container is reachable only inside the compose
+network; its port is not published to the host. The database password and
+secret key come from your local `.env` and are never embedded in the image.
+The `seed_demo --password` value is a temporary synthetic credential for the
+local demo users only; do not use a real password, and do not treat the demo
+users as public accounts.
+
+To stop and remove the containers and the database volume:
+
+```bash
+docker compose down -v
+```
+
+## What Docker and CI prove — and what they do not
+
+Docker and CI prove that the repository builds a container image, starts the
+Django application with Gunicorn against PostgreSQL 18, applies migrations,
+creates synthetic demo data, and passes the automated test suite, including
+the PostgreSQL-backed contention tests, in a reproducible local/CI
+environment.
+
+They do not prove production deployment, scalability, uptime, security
+review, customer usage, or any business outcome. SlotBook remains an internal
+demonstrator. It is not client work, a market-validated product, or evidence
+of users, revenue, conversion, or business outcomes, and it is not a live
+service.
+
 ## S3 API boundary
 
 This delivery contains the frozen JWT, Provider, Customer discovery, and
