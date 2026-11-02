@@ -73,6 +73,18 @@ def test_token_and_refresh_and_auth_failures():
 
 
 @pytest.mark.django_db
+def test_unauthenticated_error_code_matches_schema_contract():
+    # The frozen schema exposes the missing-credentials code as
+    # "authentication_required"; an unauthenticated request must emit that
+    # code rather than DRF's internal "not_authenticated".
+    make_fixture()
+    client = APIClient()
+    response = client.get("/api/provider/profile/")
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "authentication_required"
+
+
+@pytest.mark.django_db
 def test_provider_profile_timezone_rules_and_role_permissions():
     provider, _, customer, _, service, _, slot = make_fixture()
     provider_client = auth_client(provider.username, "provider-secret")

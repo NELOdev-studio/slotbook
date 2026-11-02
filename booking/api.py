@@ -24,7 +24,12 @@ def exception_handler(exc: Exception, context: dict[str, Any]):
         response.data = error_payload(str(data["code"]), str(data["message"]))
     elif isinstance(data, dict) and "detail" in data:
         detail = data["detail"]
-        code = getattr(detail, "code", None) or (
+        code = getattr(detail, "code", None)
+        # DRF reports missing credentials as "not_authenticated"; the frozen
+        # schema contract exposes this as "authentication_required".
+        if code == "not_authenticated":
+            code = "authentication_required"
+        code = code or (
             "authentication_required" if response.status_code == 401 else "request_error"
         )
         response.data = error_payload(str(code), str(detail))
