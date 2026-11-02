@@ -50,7 +50,9 @@ SQLite is not evidence for PostgreSQL locking or contention behavior; no such
 evidence is claimed by the local S2 checks. The PostgreSQL contention harness is
 `tests/test_postgres_contention.py`; run it only with a live PostgreSQL
 database using `pytest -m postgres_contention`. It is skipped when PostgreSQL
-is unavailable, and SQLite cannot substitute for row-locking evidence.
+is unavailable, and SQLite cannot substitute for row-locking evidence. In CI,
+the PostgreSQL job runs the full suite including the contention test against
+PostgreSQL 18, so the contention path is exercised on every push.
 
 The seed command creates only deterministic synthetic identities
 `demo-provider` and `demo-customer`, one service, and two future slots. It does
@@ -79,6 +81,10 @@ DJANGO_SECRET_KEY=local-validation-secret-key-32bytes SLOTBOOK_TEST_DB=sqlite \
   python -m pytest -q
 ```
 
+On the SQLite fallback the suite currently reports 20 passed and 1 skipped
+(the skipped test is the PostgreSQL-only contention harness). In CI, the
+PostgreSQL job runs the full suite including the contention test.
+
 Start the local interface to inspect the generated documentation and readiness
 status:
 
@@ -93,6 +99,103 @@ curl -fsS http://127.0.0.1:8000/api/schema/
 `/api/health/` returns only `{"status":"ready"}` or
 `{"status":"not_ready"}` and is intended for the local interface. It does not
 require JWT authentication and never returns database diagnostics or secrets.
+
+## API quick tour
+
+The examples below were verified against a local server started with the
+SQLite fallback and the seeded synthetic dataset. They use only the synthetic
+`demo-customer` identity and the two future slots created by `seed_demo`.
+Start the server as shown in the previous section (any free local port works),
+then run the commands in order.
+
+Obtain a JWT token pair for the synthetic customer (the password is the one you
+passed to `seed_demo --password`):
+
+```bash
+curl -sS -X POST http://127.0.0.1:8765/api/auth/token/ \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"demo-customer","password":"<your-local-demo-password>"}'
+```
+
+The response contains a long-lived `refresh` token and a short-lived `access`
+token (trimmed):
+
+```json
+{"refresh":"eyJ...","access":"eyJ..."}
+```
+
+Requests without a token are rejected with HTTP 401 and the error code
+`authentication_required`:
+
+```bash
+curl -sS http://127.0.0.1:8765/api/services/
+```
+
+```json
+{"error":{"code":"authentication_required","message":"Authentication credentials were not provided."}}
+```
+
+List the published services (paginated):
+
+```bash
+curl -sS http://127.0.0.1:8765/api/services/ \
+  -H "Authorization: Bearer $ACCESS"
+```
+
+```json
+{"count":1,"next":null,"previous":null,"results":[{"id":1,"name":"Demo consultation","description":"Synthetic service for local development.","timezone":"Europe/Tallinn"}]}
+```
+
+Search for available future slots of a service:
+
+```bash
+curl -sS http://127.0.0.1:8765/api/services/1/available-slots/ \
+  -H "Authorization: Bearer $ACCESS"
+```
+
+```json
+{"count":2,"next":null,"previous":null,"results":[{"id":1,"service_id":1,"starts_at":"2099-04-15T07:00:00Z","ends_at":"2099-04-15T07:30:00Z","timezone":"Europe/Tallinn","availability":"available"},{"id":2,"service_id":1,"starts_at":"2099-04-15T08:00:00Z","ends_at":"2099-04-15T08:30:00Z","timezone":"Europe/Tallinn","availability":"available"}]}
+```
+
+Book an available slot. The request body accepts only `slot_id`:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8765/api/bookings/ \
+  -H "Authorization: Bearer $ACCESS" \
+  -H 'Content-Type: application/json' \
+  -d '{"slot_id":2}'
+```
+
+```json
+{"id":1,"slot_id":2,"service_id":1,"timezone":"Europe/Tallinn","starts_at":"2099-04-15T08:00:00Z","ends_at":"2099-04-15T08:30:00Z","status":"confirmed","created_at":"2026-11-02T22:32:53.540988Z"}
+```
+
+Booking the same slot again is rejected with HTTP 409 and the error code
+`slot_already_booked` — the double-booking protection:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8765/api/bookings/ \
+  -H "Authorization: Bearer $ACCESS" \
+  -H 'Content-Type: application/json' \
+  -d '{"slot_id":2}'
+```
+
+```json
+{"error":{"code":"slot_already_booked","message":"Slot is already booked."}}
+```
+
+The full endpoint surface, including the provider-side profile, service, slot,
+and booking management routes, is documented in the generated OpenAPI schema at
+`/api/schema/` and browsable in Swagger UI at `/api/docs/`. The Swagger UI page
+is served with an `X-Frame-Options: DENY` header.
+
+## License
+
+No license has been chosen for this repository yet. Until a license is
+selected and committed, the default copyright terms apply: all rights are
+reserved by the repository owner, and no permission to copy, modify, or
+redistribute the code is granted beyond what the hosting platform's own
+terms allow.
 
 ## Docker quickstart
 
