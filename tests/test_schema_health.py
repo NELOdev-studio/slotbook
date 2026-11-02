@@ -124,6 +124,14 @@ def test_swagger_ui_is_public_and_points_to_schema():
     assert b"/api/schema/" in response.content
 
 
+def test_swagger_ui_sends_x_frame_options_header():
+    # The HTML Swagger UI page must be served with an X-Frame-Options header
+    # to mitigate clickjacking (Django security check W002).
+    response = APIClient().get("/api/docs/")
+    assert response.status_code == 200
+    assert response["X-Frame-Options"] == "DENY"
+
+
 def test_health_is_public_and_returns_only_readiness_status():
     client = APIClient()
 
