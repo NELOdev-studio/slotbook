@@ -191,11 +191,10 @@ is served with an `X-Frame-Options: DENY` header.
 
 ## License
 
-No license has been chosen for this repository yet. Until a license is
-selected and committed, the default copyright terms apply: all rights are
-reserved by the repository owner, and no permission to copy, modify, or
-redistribute the code is granted beyond what the hosting platform's own
-terms allow.
+This repository is licensed under the
+[PolyForm Strict License 1.0.0](LICENSE). The source is published for study
+and noncommercial use. Commercial use, distribution, and derivative works
+require separate written permission from the author.
 
 ## Docker quickstart
 
